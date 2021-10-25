@@ -12,6 +12,7 @@ import './Arena.css';
  * We pass in our characterNFT metadata so we can a cool card in our UI
  */
 const Arena = ({ characterNFT, setCharacterNFT, account }) => {
+
   const plays = ['🪨', ' 📃', '✂️'];
   // State
   const [gameContract, setGameContract] = useState(null);
@@ -23,13 +24,50 @@ const Arena = ({ characterNFT, setCharacterNFT, account }) => {
   
   // UseEffects
   useEffect(() => {
+    const fetchAllNFTs = async () => {
+      console.log('in fetchAllNFTs');
+      try {
+        const myNFT = await gameContract.tokenID();
+        const myTokenID = myNFT.toNumber();
+        console.log("MyNFT: ", myNFT);
+        const result = await gameContract.numTokens();
+        const top = result.toNumber();
+        console.log("Top: ", top);
+        for (let i = 1; i < top; i++) {
+          if (i !== myTokenID) {
+            const txn = await gameContract.tokenURI(i);
+            const json = atob(txn.substring(29));
+            const nft = await JSON.parse(json);
+            setAllNFTs(prev => ({...prev, [i.toString()]: nft}));
+          }
+        }
+      } catch(error) {
+        console.log(error);
+      }
+    }
+
+
 	  const fetchBoss = async () => {
 	    const bossTxn = await gameContract.getBigBoss();
 			console.log('Boss:', bossTxn);
 	    setBoss(transformCharacterData(bossTxn));
 	  };
 
-    
+    const onCharacterMint = async (_sender, tokenId, _characterIndex) => {
+      try {
+          const myNFT = await gameContract.tokenID();
+          const myTokenID = myNFT.toNumber();
+          if (tokenId === myTokenID) 
+            return;
+          const txn = await gameContract.tokenURI(tokenId);
+          console.log(txn);
+          const json = atob(txn.substring(29));
+          const nft = await JSON.parse(json);
+          setAllNFTs(prev => ({...prev, [tokenId.toString()]: nft}));
+        } catch(err) {
+          console.log(err);
+        }
+    }
 		
 		/*
 		* Setup logic when this event is fired off
@@ -81,8 +119,10 @@ const Arena = ({ characterNFT, setCharacterNFT, account }) => {
 	  };
 	
 	  if (gameContract) {
+      fetchAllNFTs();
 	    fetchBoss();
 			gameContract.on('TurnComplete', onTurnComplete);
+      gameContract.on('CharacterNFTMinted', onCharacterMint);
       console.log('set onTurnComplete!')
 	  }
 	
@@ -91,7 +131,9 @@ const Arena = ({ characterNFT, setCharacterNFT, account }) => {
 	*/
 	 return () => {
 	  if (gameContract) {
+      fetchAllNFTs();
 	    gameContract.off('TurnComplete', onTurnComplete);
+      gameContract.off('CharacterNFTMinted', onCharacterMint);
 	  }
 	}
 }, [gameContract, setCharacterNFT]);
@@ -109,9 +151,6 @@ const Arena = ({ characterNFT, setCharacterNFT, account }) => {
         roshambo.abi,
         signer
       );
-
-      
-
       setGameContract(gameContract);
     } else {
       console.log('Ethereum object not found');

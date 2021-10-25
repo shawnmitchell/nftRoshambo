@@ -64,11 +64,11 @@ const SelectCharacter = ({ setCharacterNFT, account }) => {
      * Once our character NFT is minted we can fetch the metadata from our contract
      * and set it in state to move onto the Arena
      */
-    if (gameContract && sender.toUpperCase() === account.toUpperCase()) {
+    
       const characterNFT = await gameContract.checkIfUserHasNFT();
       console.log('CharacterNFT: ', characterNFT);
       setCharacterNFT(transformCharacterData(characterNFT));
-    }
+  
   };
 
   if (gameContract) {
@@ -116,6 +116,7 @@ const SelectCharacter = ({ setCharacterNFT, account }) => {
         console.log('mintTxn:', mintTxn);
       }
     } catch (error) {
+      setIsLoading(false);
       console.warn('MintCharacterAction Error:', error);
     }
   };
